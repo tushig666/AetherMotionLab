@@ -13,12 +13,8 @@ import {
   ChevronRight, 
   Share, 
   Layers, 
-  History, 
-  Play, 
   CreditCard,
   Edit3,
-  ShieldCheck,
-  CheckCircle2,
   Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -104,15 +100,15 @@ export default function Home() {
       }
 
       toast({
-        title: "GENERATION COMPLETE",
-        description: "Vector topology and motion choreography synthesized successfully.",
+        title: "SYNTHESIS SUCCESS",
+        description: "Elite vector topology and cinematic motion choreography initialized.",
       });
     } catch (error: any) {
       console.error('Generation Error:', error);
       toast({
         variant: "destructive",
         title: "SYNTHESIS FAILED",
-        description: error.message || "An error occurred during the AI generation process.",
+        description: error.message || "An error occurred during elite engine generation.",
       });
     } finally {
       setIsLoading(false);
@@ -165,15 +161,15 @@ export default function Home() {
 
   const handleExport = () => {
     if (!result) return;
-    const html = generateStandaloneHtml(result.svgContent, result.gsapAnimationCode);
+    const html = generateStandaloneHtml(result.svg, result.gsap, result.title, result.css);
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `aether-motion-${Date.now()}.html`;
+    a.download = `aether-${result.title.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.html`;
     a.click();
     URL.revokeObjectURL(url);
-    toast({ title: "ASSETS EXPORTED" });
+    toast({ title: "ELITE ASSETS EXPORTED" });
   };
 
   const renderContent = () => {
@@ -185,11 +181,11 @@ export default function Home() {
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
                   <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse glow-accent" />
-                  <span className="text-[10px] font-code uppercase tracking-widest text-muted-foreground">Studio Runtime v4.2</span>
+                  <span className="text-[10px] font-code uppercase tracking-widest text-muted-foreground">Elite Engine v5.0</span>
                 </div>
                 <ChevronRight className="w-4 h-4 text-white/20" />
                 <h1 className="text-xs font-headline font-bold uppercase tracking-[0.2em] text-foreground">
-                  {result ? "Active Workspace" : "New Scene Pipeline"}
+                  {result ? result.title : "Synthesis Pipeline"}
                 </h1>
               </div>
 
@@ -201,26 +197,26 @@ export default function Home() {
                   <Share className="w-3.5 h-3.5" />
                   Collaborate
                 </Button>
-                <Button variant="outline" size="sm" className="h-8 text-[10px] gap-2 uppercase tracking-widest font-headline border-white/10" onClick={handleExport}>
+                <Button variant="outline" size="sm" className="h-8 text-[10px] gap-2 uppercase tracking-widest font-headline border-white/10" onClick={handleExport} disabled={!result}>
                   <Layers className="w-3.5 h-3.5" />
-                  Export Assets
+                  Export Scene
                 </Button>
-                <Button size="sm" className="h-8 text-[10px] gap-2 bg-primary hover:bg-primary/90 glow-primary uppercase tracking-widest font-headline" onClick={() => toast({ title: "DEPLOYMENT SIMULATED" })}>
+                <Button size="sm" className="h-8 text-[10px] gap-2 bg-primary hover:bg-primary/90 glow-primary uppercase tracking-widest font-headline" onClick={() => toast({ title: "DEPLOYMENT READY" })}>
                   <Sparkles className="w-3.5 h-3.5" />
-                  Deploy Production
+                  Push to CDN
                 </Button>
               </div>
             </header>
 
             <div className="flex-1 relative">
-              <MotionStage svgContent={result?.svgContent || ''} gsapCode={result?.gsapAnimationCode || ''} isLoading={isLoading} />
+              <MotionStage svgContent={result?.svg || ''} gsapCode={result?.gsap || ''} cssContent={result?.css || ''} isLoading={isLoading} />
               {!result && !isLoading && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none p-6 text-center">
                   <div className="w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-6 border border-primary/20 glow-primary">
                     <Wand2 className="w-10 h-10 text-primary" />
                   </div>
-                  <h2 className="text-3xl font-headline font-bold tracking-tight text-glow mb-2">The Future is Vector.</h2>
-                  <p className="text-muted-foreground max-w-md">Enter a prompt below to synthesize a cinematic SVG motion scene using high-end AI choreography.</p>
+                  <h2 className="text-3xl font-headline font-bold tracking-tight text-glow mb-2">Cinematic Synthesis.</h2>
+                  <p className="text-muted-foreground max-w-md">Invoke the elite motion engine with a blueprint prompt to generate a world-class vector scene.</p>
                 </div>
               )}
             </div>
@@ -234,22 +230,23 @@ export default function Home() {
         return (
           <div className="flex-1 p-8 space-y-8 flex flex-col overflow-hidden">
             <div>
-              <h2 className="text-3xl font-headline font-bold tracking-tight text-glow">Generation History</h2>
-              <p className="text-muted-foreground">Revisit previously synthesized motion blueprints.</p>
+              <h2 className="text-3xl font-headline font-bold tracking-tight text-glow">Vector Archives</h2>
+              <p className="text-muted-foreground">Previously synthesized elite motion blueprints.</p>
             </div>
             <ScrollArea className="flex-1">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pb-12">
                 {combinedHistory.map((item, idx) => (
                   <Card key={item.id || idx} className="glass-darker border-white/5 p-6 hover:border-primary/20 transition-all flex gap-6 overflow-hidden">
                     <div className="w-32 h-32 rounded-lg bg-black/40 border border-white/5 flex items-center justify-center overflow-hidden shrink-0">
-                      <div className="scale-[0.25] pointer-events-none" dangerouslySetInnerHTML={{ __html: item.svgContent }} />
+                      <div className="scale-[0.25] pointer-events-none" dangerouslySetInnerHTML={{ __html: item.svg }} />
                     </div>
                     <div className="flex-1 space-y-4">
-                      <p className="text-sm font-medium italic line-clamp-2">"{item.prompt}"</p>
+                      <h3 className="text-xs font-bold uppercase tracking-widest text-primary">{item.title}</h3>
+                      <p className="text-[10px] text-muted-foreground italic line-clamp-2">"{item.prompt}"</p>
                       <Button variant="outline" size="sm" className="w-full text-[10px] uppercase tracking-widest" onClick={() => {
                         setResult(item);
                         setActiveSection('stage');
-                      }}>Load Scene</Button>
+                      }}>Load Blueprint</Button>
                     </div>
                   </Card>
                 ))}
@@ -267,11 +264,11 @@ export default function Home() {
               </Avatar>
               <div className="flex-1">
                 <h2 className="text-4xl font-headline font-bold text-glow">{user?.displayName || 'Vanguard Entity'}</h2>
-                <Badge className="bg-primary/20 text-primary mt-4">{profile?.plan?.toUpperCase() || 'FREE TIER'}</Badge>
+                <Badge className="bg-primary/20 text-primary mt-4">{profile?.plan?.toUpperCase() || 'ELITE FREE'}</Badge>
               </div>
               <Button onClick={() => setIsProfileModalOpen(true)} variant="outline" className="border-white/10 gap-2 font-headline uppercase tracking-widest">
                 <Edit3 className="w-4 h-4" />
-                Update Identity
+                Edit Protocol
               </Button>
             </header>
 
@@ -282,7 +279,7 @@ export default function Home() {
                 <div className="text-3xl font-headline font-bold">$0</div>
                 <Button variant="outline" className="w-full" disabled={profile?.plan === 'free'}>ACTIVE</Button>
               </Card>
-              <Card className={cn("glass p-6 space-y-6", profile?.plan === 'pro' && "border-accent/40")}>
+              <Card className={cn("glass p-6 space-y-6", (profile?.plan === 'pro' || !profile?.plan) && "border-accent/40")}>
                 <h4 className="font-headline font-bold text-lg">Aether Pro</h4>
                 <p className="text-xs text-muted-foreground">Elite GPU synthesis with cinematic morphing.</p>
                 <div className="text-3xl font-headline font-bold">$29</div>
@@ -299,7 +296,7 @@ export default function Home() {
                 </div>
                 <DialogFooter>
                   <Button variant="ghost" onClick={() => setIsProfileModalOpen(false)}>Cancel</Button>
-                  <Button onClick={handleUpdateProfile} className="bg-primary glow-primary" disabled={isUpdatingProfile}>Update Protocol</Button>
+                  <Button onClick={handleUpdateProfile} className="bg-primary glow-primary" disabled={isUpdatingProfile}>Commit Update</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -316,7 +313,7 @@ export default function Home() {
         {renderContent()}
         {activeSection === 'stage' && (
           <aside className="w-[400px] h-full hidden xl:block z-50">
-            <LiveInspector svgContent={result?.svgContent || ''} gsapCode={result?.gsapAnimationCode || ''} metadata={result?.metadata} />
+            <LiveInspector result={result} />
           </aside>
         )}
       </div>

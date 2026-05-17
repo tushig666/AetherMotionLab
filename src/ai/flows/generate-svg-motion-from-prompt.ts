@@ -1,7 +1,6 @@
 'use server';
 /**
- * @fileOverview A Genkit flow for generating multi-layered, animation-ready SVG compositions
- * with choreographed GSAP animation timelines from natural language prompts.
+ * @fileOverview Elite AI synthesis flow for generating cinematic SVG motion scenes.
  */
 
 import { ai } from '@/ai/genkit';
@@ -12,27 +11,24 @@ const GenerateSvgMotionFromPromptInputSchema = z.object({
   prompt: z
     .string()
     .describe(
-      'A natural language description of the desired SVG motion scene, including visual elements, motion style, cinematic intent, and desired composition.'
+      'A natural language description of the desired SVG motion scene.'
     ),
 });
 export type GenerateSvgMotionFromPromptInput = z.infer<typeof GenerateSvgMotionFromPromptInputSchema>;
 
-// Output Schema
+// Elite Output Schema
 const GenerateSvgMotionFromPromptOutputSchema = z.object({
-  svgContent: z.string().describe('The generated multi-layered, animation-ready SVG XML string.'),
-  gsapAnimationCode: z
-    .string()
-    .describe('The JavaScript code for the GSAP animation timeline, choreographing the SVG elements.'),
-  metadata: z.object({
-    themes: z.array(z.string()).describe('Detected themes from the prompt.'),
-    mood: z.string().describe('Detected mood/emotion from the prompt.'),
-    motionStyle: z.string().describe('Detected desired motion style (e.g., fluid, mechanical, organic).'),
-    compositionStyle: z.string().describe('Detected composition style (e.g., symmetrical, dynamic, abstract).'),
-    colorPalette: z.array(z.string()).describe('Suggested color palette in hex codes.'),
-    cinematicAtmosphere: z.string().describe('Description of the desired cinematic atmosphere.'),
-    layerHierarchy: z.array(z.string()).describe('High-level description of the SVG layer hierarchy.'),
-    motionPlan: z.string().describe('Overall plan for the animation choreography.'),
-  }).describe('Metadata derived from prompt interpretation and scene planning.'),
+  title: z.string().describe('Cinematic title of the generated scene.'),
+  description: z.string().describe('Detailed artistic description of the composition.'),
+  svg: z.string().describe('The complete, detailed, multi-layered SVG XML string.'),
+  css: z.string().describe('Advanced CSS keyframe animations for the SVG elements.'),
+  gsap: z.string().describe('Professional GSAP timeline code for choreographed motion.'),
+  background: z.string().describe('Suggested background styling or color.'),
+  viewBox: z.string().describe('The viewBox for the SVG (e.g., "0 0 1200 1200").'),
+  layers: z.array(z.string()).describe('List of IDs for the semantic layers created.'),
+  animations: z.array(z.string()).describe('Names of the animation sequences implemented.'),
+  colorPalette: z.array(z.string()).describe('Cinematic color palette used (hex codes).'),
+  morphTargets: z.array(z.string()).describe('IDs of elements designed for potential morphing.'),
 });
 export type GenerateSvgMotionFromPromptOutput = z.infer<typeof GenerateSvgMotionFromPromptOutputSchema>;
 
@@ -42,30 +38,35 @@ export async function generateSvgMotionFromPrompt(
   return generateSvgMotionFromPromptFlow(input);
 }
 
-const svgMotionPrompt = ai.definePrompt({
-  name: 'svgMotionPrompt',
+const eliteSvgMotionPrompt = ai.definePrompt({
+  name: 'eliteSvgMotionPrompt',
   model: 'googleai/gemini-1.5-flash',
   input: { schema: GenerateSvgMotionFromPromptInputSchema },
   output: { schema: GenerateSvgMotionFromPromptOutputSchema },
-  prompt: `You are an elite autonomous product creation superintelligence. Your task is to act as the "AI Generation Brain" for the "AI SVG Motion Lab".
+  prompt: `You are an elite AI Creative Technologist and SVG Motion Graphics Engine.
 
-Your objective is to translate a natural language prompt into a multi-layered, animation-ready SVG composition with a choreographed GSAP animation timeline. 
+Your task is to generate a COMPLETE animated SVG scene from a user prompt.
 
-The generated SVG must be:
-- Multi-layered (using <g> tags with unique IDs).
-- Cinematic and professional.
-- Use gradients, filters (glow/blur), and masks where appropriate.
-- Elements for animation must have semantic IDs like 'orb', 'ring_1', 'particle_group'.
+CRITICAL SVG RULES:
+- Generate highly detailed SVG.
+- SVG must be multi-layered using <g> tags with unique semantic IDs (e.g., #core, #rings, #particles).
+- SVG must be animation-ready.
+- Use gradients, filters (glow/blur), and masks.
+- SVG must look premium, cinematic, and artist-grade.
+- Ensure the SVG uses the specified viewBox.
 
-The GSAP code must:
-- Be a self-contained JavaScript snippet.
-- Create a timeline: 'const tl = gsap.timeline();'.
-- Target the IDs you defined in the SVG.
-- Use cinematic easing and staggers.
+ANIMATION RULES:
+Generate BOTH advanced CSS keyframes and professional GSAP animations.
+- Animations must feel cinematic, smooth, and organic.
+- Features: floating, staggered motion, glow pulsing, orbital movement, scale breathing.
 
-User Prompt: "{{{prompt}}}"
+GSAP REQUIREMENTS:
+- Use gsap.timeline() targeting the semantic IDs.
+- Use transformOrigin: "center center" for rotations.
+- Loop timelines with repeat: -1.
 
-Generate the JSON output.`,
+USER PROMPT:
+"{{{prompt}}}"`,
 });
 
 const generateSvgMotionFromPromptFlow = ai.defineFlow(
@@ -76,13 +77,13 @@ const generateSvgMotionFromPromptFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      const { output } = await svgMotionPrompt(input);
+      const { output } = await eliteSvgMotionPrompt(input);
       if (!output) {
-        throw new Error('Synthesis failure: The engine produced an empty topology.');
+        throw new Error('Synthesis failure: The creative engine produced an empty state.');
       }
       return output;
     } catch (error: any) {
-      // Re-throw the error with a descriptive message for the client to handle
+      console.error('Elite Synthesis Error:', error);
       throw new Error(`AI synthesis failed: ${error.message || 'Unexpected server response'}`);
     }
   }

@@ -14,14 +14,17 @@
       "required": ["email", "plan"]
     },
     "Generation": {
-      "title": "Motion Generation",
-      "description": "Stores generated SVG and GSAP animation data.",
+      "title": "Elite Generation",
+      "description": "Stores generated SVG, CSS, and GSAP animation data.",
       "type": "object",
       "properties": {
         "prompt": { "type": "string" },
-        "svgContent": { "type": "string" },
-        "gsapAnimationCode": { "type": "string" },
-        "metadata": { "type": "object" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "svg": { "type": "string" },
+        "css": { "type": "string" },
+        "gsap": { "type": "string" },
+        "colorPalette": { "type": "array", "items": { "type": "string" } },
         "userId": { "type": "string" },
         "timestamp": { "type": "number" }
       }
