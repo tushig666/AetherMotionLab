@@ -48,6 +48,7 @@ export async function generateSvgMotionFromPrompt(
 
 const svgMotionPrompt = ai.definePrompt({
   name: 'svgMotionPrompt',
+  model: 'googleai/gemini-1.5-flash',
   input: { schema: GenerateSvgMotionFromPromptInputSchema },
   output: { schema: GenerateSvgMotionFromPromptOutputSchema },
   prompt: `You are an elite autonomous product creation superintelligence. Your task is to act as the "AI Generation Brain" for the "AI SVG Motion Lab".
@@ -85,8 +86,7 @@ const generateSvgMotionFromPromptFlow = ai.defineFlow(
       }
       return output;
     } catch (error: any) {
-      console.error('Synthesis Engine Error:', error);
-      // We throw a more specific message that the client can catch
+      // Re-throw the error with a descriptive message for the client to handle
       throw new Error(`AI synthesis failed: ${error.message || 'Unexpected server response'}`);
     }
   }

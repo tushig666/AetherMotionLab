@@ -38,6 +38,7 @@ export async function morphSvgBetweenGeneratedStates(input: SvgMorphInput): Prom
 
 const morphSvgPrompt = ai.definePrompt({
   name: 'morphSvgPrompt',
+  model: 'googleai/gemini-1.5-flash',
   input: { schema: SvgMorphInputSchema },
   output: { schema: SvgMorphOutputSchema },
   prompt: `You are an elite "Vector Topology Morpher" and "Cinematic Motion Choreographer". Your task is to analyze two complex SVG structures and generate production-ready GSAP JavaScript code to seamlessly and cinematically morph the first SVG (svgContent1) into the second SVG (svgContent2).
@@ -65,22 +66,8 @@ Morph Style: {{{morphStyleDescription}}}
 ## Example GSAP Code Structure:
 ```javascript
 (function() {
-  // Ensure SVGs are appended to the DOM before animating
-  // e.g., document.getElementById('svg-container').innerHTML = svgContent1;
-  // then select elements using IDs or classes.
-
   const masterTimeline = gsap.timeline({ defaults: { duration: {{morphDurationSeconds}} } });
-
-  // Example: morphing a path
-  // masterTimeline.to("#path1_from_svg1", { morphSVG: "#path1_from_svg2", ease: "power2.inOut" });
-
-  // Example: animating opacity
-  // masterTimeline.to("#circleA_from_svg1", { opacity: 0, ease: "power1.out" }, "<"); // "<" starts at same time as previous animation
-
-  // Example: animating fill color
-  // masterTimeline.to("#rectB_from_svg1", { fill: "red", ease: "power2.inOut" }, "<0.2"); // starts 0.2s after previous
-
-  // Add more animations for other matched elements
+  // Animation logic goes here
 })();
 ```
 
@@ -99,8 +86,7 @@ const morphSvgFlow = ai.defineFlow(
       const { output } = await morphSvgPrompt(input);
       return output!;
     } catch (error: any) {
-      console.error('Morph Engine Error:', error);
-      throw new Error('Topological morphing failed due to an unexpected server response.');
+      throw new Error(`Topological morphing failed: ${error.message || 'Unexpected server response'}`);
     }
   }
 );
