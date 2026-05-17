@@ -26,7 +26,8 @@ import {
   Zap,
   CheckCircle2,
   Code2,
-  Github
+  Github,
+  Edit3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -34,8 +35,19 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUser, useFirestore, useDoc } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import { updateProfile } from 'firebase/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogFooter,
+  DialogDescription 
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
 export default function Home() {
@@ -44,12 +56,23 @@ export default function Home() {
   const [history, setHistory] = useState<(GenerateSvgMotionFromPromptOutput & { id: string, timestamp: number, prompt: string })[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
+  // Profile editing state
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+
   const { user } = useUser();
   const db = useFirestore();
   const userProfileRef = user ? doc(db!, 'users', user.uid) : null;
   const { data: profile } = useDoc(userProfileRef);
   
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (user?.displayName) {
+      setNewName(user.displayName);
+    }
+  }, [user]);
 
   const handleGenerate = async (prompt: string) => {
     setIsLoading(true);
@@ -90,6 +113,28 @@ export default function Home() {
       title: "PLAN UPGRADED",
       description: "Welcome to AetherMotion Pro. Full GPU acceleration enabled.",
     });
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!user || !newName.trim() || !userProfileRef) return;
+    setIsUpdatingProfile(true);
+    try {
+      await updateProfile(user, { displayName: newName });
+      await updateDoc(userProfileRef, { displayName: newName });
+      setIsProfileModalOpen(false);
+      toast({
+        title: "IDENTITY UPDATED",
+        description: "Your entity signature has been successfully recalibrated.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "UPDATE FAILED",
+        description: error.message || "Could not synchronize identity changes.",
+      });
+    } finally {
+      setIsUpdatingProfile(false);
+    }
   };
 
   const renderContent = () => {
@@ -224,7 +269,7 @@ export default function Home() {
                 <Avatar className="w-32 h-32 rounded-2xl border-2 border-white/10 glow-primary">
                   <AvatarImage src={user?.photoURL || ''} />
                   <AvatarFallback className="bg-primary/10 text-primary text-4xl font-bold">
-                    {user?.displayName?.charAt(0) || 'U'}
+                    {user?.displayName?.charAt(0) || user?.email?.charAt(0).toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-primary rounded-xl flex items-center justify-center border-4 border-[#07070D]">
@@ -234,7 +279,7 @@ export default function Home() {
               <div className="flex-1 space-y-4">
                 <div className="space-y-1">
                   <h2 className="text-4xl font-headline font-bold tracking-tight text-glow">
-                    {user?.displayName || 'Entity Placeholder'}
+                    {user?.displayName || 'Identity Initializing...'}
                   </h2>
                   <p className="text-muted-foreground font-code text-sm tracking-widest uppercase">
                     ID: {user?.uid.slice(0, 12)}...
@@ -247,7 +292,12 @@ export default function Home() {
                   <span className="text-xs text-muted-foreground">Active since {profile?.createdAt ? new Date(profile.createdAt.seconds * 1000).toLocaleDateString() : 'Recent'}</span>
                 </div>
               </div>
-              <Button variant="outline" className="border-white/10 h-11 px-8 uppercase tracking-widest font-headline">
+              <Button 
+                onClick={() => setIsProfileModalOpen(true)}
+                variant="outline" 
+                className="border-white/10 h-11 px-8 uppercase tracking-widest font-headline hover:bg-primary/10 hover:border-primary/50 transition-all"
+              >
+                <Edit3 className="w-4 h-4 mr-2" />
                 Update Identity
               </Button>
             </header>
@@ -361,6 +411,46 @@ export default function Home() {
                 </Card>
               </div>
             </div>
+
+            {/* Profile Update Dialog */}
+            <Dialog open={isProfileModalOpen} onOpenChange={setIsProfileModalOpen}>
+              <DialogContent className="glass-darker border-white/10 sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-headline font-bold tracking-tight text-glow uppercase">Update Identity Protocol</DialogTitle>
+                  <DialogDescription className="text-muted-foreground text-xs uppercase tracking-widest">
+                    Synchronize your display name across the AetherMotion cloud.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="text-[10px] uppercase tracking-widest text-muted-foreground">New Display Name</Label>
+                    <Input
+                      id="name"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      className="bg-white/5 border-white/10 col-span-3 focus:border-primary/50 transition-all"
+                      placeholder="Enter identity label..."
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => setIsProfileModalOpen(false)}
+                    className="text-xs uppercase tracking-widest font-headline"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleUpdateProfile}
+                    className="bg-primary hover:bg-primary/90 glow-primary text-xs uppercase tracking-widest font-headline"
+                    disabled={isUpdatingProfile || !newName.trim()}
+                  >
+                    {isUpdatingProfile ? "Synchronizing..." : "Update Protocol"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         );
       case 'library':
