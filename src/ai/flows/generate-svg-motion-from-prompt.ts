@@ -1,12 +1,11 @@
-
 'use server';
 /**
- * @fileOverview Elite AI synthesis flow for generating cinematic SVG motion scenes.
- * Utilizes centralized AI Infrastructure to prevent model-resolution errors.
+ * @fileOverview Elite AI synthesis flow with resilience and quota awareness.
  */
 
 import { ai, MODEL_ID } from '@/ai/genkit';
 import { z } from 'genkit';
+import { withRetry } from '@/lib/ai/resilience-utils';
 
 const GenerateSvgMotionFromPromptOutputSchema = z.object({
   title: z.string().describe('Cinematic title of the generated scene.'),
@@ -38,7 +37,7 @@ export async function generateSvgMotionFromPrompt(
 
 const eliteSvgMotionPrompt = ai.definePrompt({
   name: 'eliteSvgMotionPrompt',
-  model: MODEL_ID, // Guaranteed stable model from centralized provider
+  model: MODEL_ID,
   input: { schema: GenerateSvgMotionFromPromptInputSchema },
   output: { schema: GenerateSvgMotionFromPromptOutputSchema },
   prompt: `You are an elite AI SVG Motion Graphics Engine.
@@ -71,16 +70,17 @@ const generateSvgMotionFromPromptFlow = ai.defineFlow(
     outputSchema: GenerateSvgMotionFromPromptOutputSchema,
   },
   async (input) => {
-    try {
-      const { output } = await eliteSvgMotionPrompt(input);
-      if (!output) {
-        throw new Error('Synthesis failure: The elite engine produced an empty state.');
+    return withRetry(async () => {
+      try {
+        const { output } = await eliteSvgMotionPrompt(input);
+        if (!output) {
+          throw new Error('Synthesis failure: The elite engine produced an empty state.');
+        }
+        return output;
+      } catch (error: any) {
+        console.error('[AI-Flow-Error]', error);
+        throw error;
       }
-      return output;
-    } catch (error: any) {
-      console.error('[Synthesis-Error]', error);
-      // Surface clean errors to the client
-      throw new Error(`AI synthesis failed: ${error.message || 'Unexpected engine response'}`);
-    }
+    });
   }
 );

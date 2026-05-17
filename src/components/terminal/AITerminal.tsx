@@ -1,16 +1,17 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Zap, Sparkles, Command } from 'lucide-react';
+import { Send, Zap, Sparkles, Command, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface AITerminalProps {
   onGenerate: (prompt: string) => void;
   isLoading?: boolean;
+  isQuotaWarning?: boolean;
 }
 
-export const AITerminal: React.FC<AITerminalProps> = ({ onGenerate, isLoading }) => {
+export const AITerminal: React.FC<AITerminalProps> = ({ onGenerate, isLoading, isQuotaWarning }) => {
   const [prompt, setPrompt] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -30,7 +31,12 @@ export const AITerminal: React.FC<AITerminalProps> = ({ onGenerate, isLoading })
   return (
     <div className="w-full max-w-4xl mx-auto relative group">
       {/* Glow Effect */}
-      <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 rounded-2xl blur-lg opacity-50 group-hover:opacity-100 transition duration-1000" />
+      <div className={cn(
+        "absolute -inset-1 rounded-2xl blur-lg opacity-50 group-hover:opacity-100 transition duration-1000",
+        isQuotaWarning 
+          ? "bg-gradient-to-r from-amber-500/20 via-primary/20 to-amber-500/20" 
+          : "bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20"
+      )} />
       
       <div className="relative glass-darker border-white/10 rounded-2xl p-4 shadow-2xl">
         <div className="flex items-center gap-2 mb-3 px-2">
@@ -42,12 +48,18 @@ export const AITerminal: React.FC<AITerminalProps> = ({ onGenerate, isLoading })
           <div className="h-4 w-px bg-white/10 mx-2" />
           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-code uppercase tracking-widest">
             <Command className="w-3 h-3" />
-            <span>Gen-Alpha Engine</span>
+            <span>{isQuotaWarning ? "Resilience Controller" : "Gen-Alpha Engine"}</span>
           </div>
+          {isQuotaWarning && (
+            <div className="flex items-center gap-1 ml-2 text-amber-500 animate-pulse">
+              <AlertTriangle className="w-3 h-3" />
+              <span className="text-[8px] uppercase tracking-tighter font-bold">Resilience Fallback Active</span>
+            </div>
+          )}
           {isLoading && (
             <div className="ml-auto flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse glow-primary" />
-              <span className="text-[10px] text-primary font-code uppercase tracking-widest animate-pulse">Thinking</span>
+              <span className="text-[10px] text-primary font-code uppercase tracking-widest animate-pulse">Synthesizing</span>
             </div>
           )}
         </div>
@@ -68,7 +80,10 @@ export const AITerminal: React.FC<AITerminalProps> = ({ onGenerate, isLoading })
           <Button 
             onClick={handleSubmit}
             disabled={isLoading || !prompt.trim()}
-            className="rounded-xl px-6 py-6 h-auto bg-primary hover:bg-primary/90 glow-primary transition-all active:scale-95 disabled:opacity-50"
+            className={cn(
+              "rounded-xl px-6 py-6 h-auto transition-all active:scale-95 disabled:opacity-50",
+              isQuotaWarning ? "bg-amber-600 hover:bg-amber-500 shadow-amber-500/20 shadow-xl" : "bg-primary hover:bg-primary/90 glow-primary"
+            )}
           >
             <Zap className={cn("w-5 h-5", isLoading && "animate-spin")} />
           </Button>
