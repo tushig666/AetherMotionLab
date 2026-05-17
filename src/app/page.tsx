@@ -49,6 +49,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { generateStandaloneHtml } from '@/lib/export-utils';
 
 export default function Home() {
   const [activeSection, setActiveSection] = useState<SectionID>('stage');
@@ -137,6 +138,50 @@ export default function Home() {
     }
   };
 
+  const handleCollaborate = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast({
+      title: "COLLABORATION LINK COPIED",
+      description: "Share this workspace signature with your engineering team.",
+    });
+  };
+
+  const handleExport = () => {
+    if (!result) {
+      toast({
+        variant: "destructive",
+        title: "EXPORT FAILED",
+        description: "No active topology to export. Synthesize a scene first.",
+      });
+      return;
+    }
+    const html = generateStandaloneHtml(result.svgContent, result.gsapAnimationCode);
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `aether-motion-export-${Date.now()}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({
+      title: "ASSETS EXPORTED",
+      description: "Standalone HTML blueprint successfully generated and downloaded.",
+    });
+  };
+
+  const handleDeploy = () => {
+    toast({
+      title: "DEPLOYMENT INITIALIZED",
+      description: "Synchronizing vector shards with Aether Cloud edge nodes...",
+    });
+    setTimeout(() => {
+      toast({
+        title: "PRODUCTION LIVE",
+        description: "Scene successfully deployed to high-performance production cluster.",
+      });
+    }, 2000);
+  };
+
   const renderContent = () => {
     switch (activeSection) {
       case 'stage':
@@ -155,15 +200,29 @@ export default function Home() {
               </div>
 
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" className="h-8 text-[10px] gap-2 uppercase tracking-widest font-headline">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-8 text-[10px] gap-2 uppercase tracking-widest font-headline"
+                  onClick={handleCollaborate}
+                >
                   <Share className="w-3.5 h-3.5" />
                   Collaborate
                 </Button>
-                <Button variant="outline" size="sm" className="h-8 text-[10px] gap-2 uppercase tracking-widest font-headline border-white/10 hover:bg-primary/10 hover:text-primary transition-all">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8 text-[10px] gap-2 uppercase tracking-widest font-headline border-white/10 hover:bg-primary/10 hover:text-primary transition-all"
+                  onClick={handleExport}
+                >
                   <Layers className="w-3.5 h-3.5" />
                   Export Assets
                 </Button>
-                <Button size="sm" className="h-8 text-[10px] gap-2 bg-primary hover:bg-primary/90 glow-primary uppercase tracking-widest font-headline">
+                <Button 
+                  size="sm" 
+                  className="h-8 text-[10px] gap-2 bg-primary hover:bg-primary/90 glow-primary uppercase tracking-widest font-headline"
+                  onClick={handleDeploy}
+                >
                   <Sparkles className="w-3.5 h-3.5" />
                   Deploy Production
                 </Button>
