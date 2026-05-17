@@ -101,12 +101,12 @@ export default function Home() {
         title: "GENERATION COMPLETE",
         description: "Vector topology and motion choreography synthesized successfully.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       toast({
         variant: "destructive",
         title: "SYNTHESIS FAILED",
-        description: "An error occurred during the AI generation process.",
+        description: error.message || "An error occurred during the AI generation process.",
       });
     } finally {
       setIsLoading(false);
@@ -690,3 +690,6 @@ export default function Home() {
     </AppShell>
   );
 }
+
+// Ensure the page handles long-running AI generation flows
+export const maxDuration = 60;

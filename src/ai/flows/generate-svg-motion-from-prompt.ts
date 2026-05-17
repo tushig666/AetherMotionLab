@@ -11,6 +11,9 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
+// Increase timeout for long-running AI generations
+export const maxDuration = 60;
+
 // Input Schema
 const GenerateSvgMotionFromPromptInputSchema = z.object({
   prompt: z
@@ -167,10 +170,15 @@ const generateSvgMotionFromPromptFlow = ai.defineFlow(
     outputSchema: GenerateSvgMotionFromPromptOutputSchema,
   },
   async (input) => {
-    const { output } = await svgMotionPrompt(input);
-    if (!output) {
-      throw new Error('Failed to generate SVG motion output.');
+    try {
+      const { output } = await svgMotionPrompt(input);
+      if (!output) {
+        throw new Error('Synthesis failure: The engine produced an empty topology.');
+      }
+      return output;
+    } catch (error: any) {
+      console.error('Synthesis Engine Error:', error);
+      throw new Error(error.message || 'AI synthesis failed due to an unexpected server response.');
     }
-    return output;
   }
 );

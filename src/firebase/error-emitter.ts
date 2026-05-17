@@ -1,11 +1,31 @@
 /**
- * @fileOverview A central event emitter for Firebase-related errors.
+ * @fileOverview A browser-safe central event emitter for Firebase-related errors.
  */
 
-import { EventEmitter } from 'events';
 import { FirestorePermissionError } from './errors';
 
-class FirebaseErrorEmitter extends EventEmitter {
+type Listener = (error: FirestorePermissionError) => void;
+
+class FirebaseErrorEmitter {
+  private listeners: { [key: string]: Listener[] } = {};
+
+  on(event: string, listener: Listener) {
+    if (!this.listeners[event]) {
+      this.listeners[event] = [];
+    }
+    this.listeners[event].push(listener);
+  }
+
+  off(event: string, listener: Listener) {
+    if (!this.listeners[event]) return;
+    this.listeners[event] = this.listeners[event].filter((l) => l !== listener);
+  }
+
+  emit(event: string, error: FirestorePermissionError) {
+    if (!this.listeners[event]) return;
+    this.listeners[event].forEach((listener) => listener(error));
+  }
+
   emitPermissionError(error: FirestorePermissionError) {
     this.emit('permission-error', error);
   }

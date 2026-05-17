@@ -12,6 +12,9 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
+// Increase timeout for long-running AI generations
+export const maxDuration = 60;
+
 const SvgMorphInputSchema = z.object({
   svgContent1: z.string().describe('The first SVG scene as a complete XML string, representing the starting state.'),
   svgContent2: z.string().describe('The second SVG scene as a complete XML string, representing the ending state.'),
@@ -95,7 +98,12 @@ const morphSvgFlow = ai.defineFlow(
     outputSchema: SvgMorphOutputSchema,
   },
   async (input) => {
-    const { output } = await morphSvgPrompt(input);
-    return output!;
+    try {
+      const { output } = await morphSvgPrompt(input);
+      return output!;
+    } catch (error: any) {
+      console.error('Morph Engine Error:', error);
+      throw new Error('Topological morphing failed due to an unexpected server response.');
+    }
   }
 );
