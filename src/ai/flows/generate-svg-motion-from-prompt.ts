@@ -2,10 +2,6 @@
 /**
  * @fileOverview A Genkit flow for generating multi-layered, animation-ready SVG compositions
  * with choreographed GSAP animation timelines from natural language prompts.
- *
- * - generateSvgMotionFromPrompt - A function that orchestrates the AI SVG motion generation process.
- * - GenerateSvgMotionFromPromptInput - The input type for the generateSvgMotionFromPrompt function.
- * - GenerateSvgMotionFromPromptOutput - The return type for the generateSvgMotionFromPrompt function.
  */
 
 import { ai } from '@/ai/genkit';
@@ -86,7 +82,6 @@ const generateSvgMotionFromPromptFlow = ai.defineFlow(
       }
       return output;
     } catch (error: any) {
-      // Re-throw the error with a descriptive message for the client to handle
       throw new Error(`AI synthesis failed: ${error.message || 'Unexpected server response'}`);
     }
   }

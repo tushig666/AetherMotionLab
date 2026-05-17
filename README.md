@@ -36,7 +36,7 @@ Genkit AIとGSAP（GreenSock Animation Platform）を組み合わせ、テキス
 
 ---
 
-## 🇲🇳 Монгол (Mongolian)
+## 🇲🇳 Монгол (Мongolian)
 
 AetherMotion бол хиймэл оюун ухаанд суурилсан, дараагийн үеийн вектор хөдөлгөөнт график бүтээх платформ юм.
 
@@ -62,23 +62,3 @@ AetherMotion бол хиймэл оюун ухаанд суурилсан, да�
 - **Animation Engine**: [GSAP (GreenSock Animation Platform)](https://greensock.com/gsap/)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/) & [ShadCN UI](https://ui.shadcn.com/)
 - **Icons**: [Lucide React](https://lucide.dev/)
-
-## 🚀 Getting Started
-
-1. **Install Dependencies**:
-   ```bash
-   npm install
-   ```
-
-2. **Configure Firebase**:
-   Update `src/firebase/config.ts` with your project credentials.
-
-3. **Run Development Server**:
-   ```bash
-   npm run dev
-   ```
-
-4. **Run Genkit UI (Optional)**:
-   ```bash
-   npm run genkit:dev
-   ```
