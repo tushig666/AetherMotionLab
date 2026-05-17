@@ -1,11 +1,12 @@
 'use server';
 /**
- * @fileOverview Elite AI synthesis flow with resilience and quota awareness.
+ * @fileOverview Elite AI synthesis flow with zero-failure resilience.
  */
 
 import { ai, MODEL_ID } from '@/ai/genkit';
 import { z } from 'genkit';
 import { withRetry } from '@/lib/ai/resilience-utils';
+import { generateProceduralFallback } from '@/lib/ai/fallback-generator';
 
 const GenerateSvgMotionFromPromptOutputSchema = z.object({
   title: z.string().describe('Cinematic title of the generated scene.'),
@@ -19,6 +20,7 @@ const GenerateSvgMotionFromPromptOutputSchema = z.object({
   animations: z.array(z.string()).describe('Names of the animation sequences implemented.'),
   colorPalette: z.array(z.string()).describe('Cinematic color palette used (hex codes).'),
   morphTargets: z.array(z.string()).describe('IDs of elements designed for potential morphing.'),
+  isFallback: z.boolean().optional().describe('Internal flag indicating a procedurally generated result.'),
 });
 
 export type GenerateSvgMotionFromPromptOutput = z.infer<typeof GenerateSvgMotionFromPromptOutputSchema>;
@@ -29,10 +31,26 @@ const GenerateSvgMotionFromPromptInputSchema = z.object({
 
 export type GenerateSvgMotionFromPromptInput = z.infer<typeof GenerateSvgMotionFromPromptInputSchema>;
 
+/**
+ * High-level Safe Action for SVG synthesis.
+ * Ensures a zero-failure experience by returning a procedural fallback if the AI engine fails.
+ */
 export async function generateSvgMotionFromPrompt(
   input: GenerateSvgMotionFromPromptInput
 ): Promise<GenerateSvgMotionFromPromptOutput> {
-  return generateSvgMotionFromPromptFlow(input);
+  try {
+    return await generateSvgMotionFromPromptFlow(input);
+  } catch (error: any) {
+    console.warn('[AI-Synthesis-Pipeline] Engine failure detected. Activating procedural fallback.', error.message);
+    
+    // Generate a world-class fallback locally on the server
+    const fallback = generateProceduralFallback(input.prompt);
+    
+    return {
+      ...fallback,
+      isFallback: true
+    };
+  }
 }
 
 const eliteSvgMotionPrompt = ai.definePrompt({
@@ -71,16 +89,11 @@ const generateSvgMotionFromPromptFlow = ai.defineFlow(
   },
   async (input) => {
     return withRetry(async () => {
-      try {
-        const { output } = await eliteSvgMotionPrompt(input);
-        if (!output) {
-          throw new Error('Synthesis failure: The elite engine produced an empty state.');
-        }
-        return output;
-      } catch (error: any) {
-        console.error('[AI-Flow-Error]', error);
-        throw error;
+      const { output } = await eliteSvgMotionPrompt(input);
+      if (!output) {
+        throw new Error('Synthesis failure: The elite engine produced an empty state.');
       }
+      return output;
     });
   }
 );

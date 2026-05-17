@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Intelligent resilience utilities for AI infrastructure.
  * Provides exponential backoff, retry logic, and quota management.
@@ -15,13 +14,6 @@ const DEFAULT_RETRY_OPTIONS: RetryOptions = {
   baseDelay: 2000,
   maxDelay: 10000,
 };
-
-export class QuotaExhaustedError extends Error {
-  constructor(message: string = 'AI Quota Exhausted') {
-    super(message);
-    this.name = 'QuotaExhaustedError';
-  }
-}
 
 /**
  * Executes a function with exponential backoff retries.
@@ -50,17 +42,14 @@ export async function withRetry<T>(
 
       if (isQuotaError && attempt < maxRetries) {
         const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
-        console.warn(`[AI-Resilience] Quota exceeded. Retrying in ${delay}ms... (Attempt ${attempt + 1}/${maxRetries})`);
+        console.warn(`[AI-Resilience] Resource constrained. Retrying in ${delay}ms... (Attempt ${attempt + 1}/${maxRetries})`);
         await new Promise((resolve) => setTimeout(resolve, delay));
         continue;
       }
 
-      if (isQuotaError) {
-        // We throw this specifically so the caller (Server Action or Page)
-        // can decide whether to trigger the fallback engine.
-        throw new QuotaExhaustedError();
-      }
-
+      // We no longer throw QuotaExhaustedError here to prevent Next.js hard crashes.
+      // Instead, we let the original error propagate to be caught by the high-level 
+      // safe-action handler which will trigger the fallback engine.
       throw error;
     }
   }
