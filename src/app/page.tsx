@@ -31,8 +31,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useUser, useFirestore, useDoc } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { useUser, useFirestore, useDoc, useCollection } from '@/firebase';
+import { doc, updateDoc, collection, addDoc, query, orderBy, limit, serverTimestamp } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
@@ -54,7 +54,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 export default function Home() {
   const [activeSection, setActiveSection] = useState<SectionID>('stage');
   const [result, setResult] = useState<GenerateSvgMotionFromPromptOutput | null>(null);
-  const [history, setHistory] = useState<(GenerateSvgMotionFromPromptOutput & { id: string, timestamp: number, prompt: string })[]>([]);
+  const [localHistory, setLocalHistory] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
   // Profile editing state
@@ -65,13 +65,13 @@ export default function Home() {
   const { user } = useUser();
   const db = useFirestore();
   
-  // Memoize the document reference to avoid null access on initial render
-  const userProfileRef = useMemo(() => {
-    if (!user || !db) return null;
-    return doc(db, 'users', user.uid);
-  }, [user, db]);
+  // Memoize refs
+  const userProfileRef = useMemo(() => (user && db) ? doc(db, 'users', user.uid) : null, [user, db]);
+  const generationsRef = useMemo(() => (user && db) ? collection(db, 'users', user.uid, 'generations') : null, [user, db]);
+  const historyQuery = useMemo(() => generationsRef ? query(generationsRef, orderBy('timestamp', 'desc'), limit(20)) : null, [generationsRef]);
 
   const { data: profile } = useDoc(userProfileRef);
+  const { data: firestoreHistory } = useCollection(historyQuery);
   
   const { toast } = useToast();
 
@@ -88,14 +88,31 @@ export default function Home() {
       const output = await generateSvgMotionFromPrompt({ prompt });
       setResult(output);
       
-      const newGeneration = {
+      const generationData = {
         ...output,
-        id: Math.random().toString(36).substring(7),
         timestamp: Date.now(),
         prompt: prompt
       };
-      
-      setHistory(prev => [newGeneration, ...prev]);
+
+      // Save to Firestore if logged in
+      if (generationsRef) {
+        addDoc(generationsRef, {
+          ...generationData,
+          createdAt: serverTimestamp(),
+          userId: user?.uid
+        }).catch(err => {
+          if (err.code === 'permission-denied') {
+            errorEmitter.emitPermissionError(new FirestorePermissionError({
+              path: generationsRef.path,
+              operation: 'create',
+              requestResourceData: generationData
+            }));
+          }
+        });
+      } else {
+        // Fallback for anonymous users
+        setLocalHistory(prev => [{ ...generationData, id: Math.random().toString() }, ...prev]);
+      }
 
       toast({
         title: "GENERATION COMPLETE",
@@ -115,14 +132,7 @@ export default function Home() {
 
   const handleUpgradePlan = () => {
     if (!userProfileRef) return;
-    
     updateDoc(userProfileRef, { plan: 'pro' })
-      .then(() => {
-        toast({
-          title: "PLAN UPGRADED",
-          description: "Welcome to AetherMotion Pro. Full GPU acceleration enabled.",
-        });
-      })
       .catch(async (err) => {
         if (err.code === 'permission-denied') {
           errorEmitter.emitPermissionError(new FirestorePermissionError({
@@ -166,48 +176,21 @@ export default function Home() {
     }
   };
 
-  const handleCollaborate = () => {
-    navigator.clipboard.writeText(window.location.href);
-    toast({
-      title: "COLLABORATION LINK COPIED",
-      description: "Share this workspace signature with your engineering team.",
-    });
-  };
+  const combinedHistory = useMemo(() => {
+    const fHistory = firestoreHistory || [];
+    return [...fHistory, ...localHistory].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  }, [firestoreHistory, localHistory]);
 
   const handleExport = () => {
-    if (!result) {
-      toast({
-        variant: "destructive",
-        title: "EXPORT FAILED",
-        description: "No active topology to export. Synthesize a scene first.",
-      });
-      return;
-    }
+    if (!result) return;
     const html = generateStandaloneHtml(result.svgContent, result.gsapAnimationCode);
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `aether-motion-export-${Date.now()}.html`;
+    a.download = `aether-motion-${Date.now()}.html`;
     a.click();
     URL.revokeObjectURL(url);
-    toast({
-      title: "ASSETS EXPORTED",
-      description: "Standalone HTML blueprint successfully generated and downloaded.",
-    });
-  };
-
-  const handleDeploy = () => {
-    toast({
-      title: "DEPLOYMENT INITIALIZED",
-      description: "Synchronizing vector shards with Aether Cloud edge nodes...",
-    });
-    setTimeout(() => {
-      toast({
-        title: "PRODUCTION LIVE",
-        description: "Scene successfully deployed to high-performance production cluster.",
-      });
-    }, 2000);
   };
 
   const renderContent = () => {
@@ -232,7 +215,10 @@ export default function Home() {
                   variant="ghost" 
                   size="sm" 
                   className="h-8 text-[10px] gap-2 uppercase tracking-widest font-headline"
-                  onClick={handleCollaborate}
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.href);
+                    toast({ title: "LINK COPIED" });
+                  }}
                 >
                   <Share className="w-3.5 h-3.5" />
                   Collaborate
@@ -240,7 +226,7 @@ export default function Home() {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="h-8 text-[10px] gap-2 uppercase tracking-widest font-headline border-white/10 hover:bg-primary/10 hover:text-primary transition-all"
+                  className="h-8 text-[10px] gap-2 uppercase tracking-widest font-headline border-white/10"
                   onClick={handleExport}
                 >
                   <Layers className="w-3.5 h-3.5" />
@@ -249,7 +235,7 @@ export default function Home() {
                 <Button 
                   size="sm" 
                   className="h-8 text-[10px] gap-2 bg-primary hover:bg-primary/90 glow-primary uppercase tracking-widest font-headline"
-                  onClick={handleDeploy}
+                  onClick={() => toast({ title: "DEPLOYMENT SIMULATED" })}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   Deploy Production
@@ -294,19 +280,15 @@ export default function Home() {
                 <h2 className="text-3xl font-headline font-bold tracking-tight text-glow">Generation History</h2>
                 <p className="text-muted-foreground">Revisit and refine your previously synthesized motion blueprints.</p>
               </div>
-              <Button variant="outline" size="sm" className="text-xs uppercase tracking-widest font-headline border-white/10" onClick={() => setHistory([])}>
-                <Trash2 className="w-3.5 h-3.5 mr-2" />
-                Clear Archives
-              </Button>
             </div>
             
             <ScrollArea className="flex-1 pr-4">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pb-12">
-                {history.length > 0 ? history.map((item) => (
-                  <Card key={item.id} className="glass-darker border-white/5 p-6 hover:border-primary/20 transition-all group overflow-hidden">
+                {combinedHistory.length > 0 ? combinedHistory.map((item, idx) => (
+                  <Card key={item.id || idx} className="glass-darker border-white/5 p-6 hover:border-primary/20 transition-all group overflow-hidden">
                     <div className="flex gap-6 h-full">
                       <div className="w-32 h-32 rounded-lg bg-black/40 border border-white/5 flex items-center justify-center relative overflow-hidden shrink-0">
-                        <div className="scale-[0.3] pointer-events-none" dangerouslySetInnerHTML={{ __html: item.svgContent }} />
+                        <div className="scale-[0.25] pointer-events-none origin-center" dangerouslySetInnerHTML={{ __html: item.svgContent }} />
                         <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
                           <Button size="icon" variant="ghost" className="text-white" onClick={() => {
                             setResult(item);
@@ -319,8 +301,10 @@ export default function Home() {
                       <div className="flex-1 min-w-0 flex flex-col justify-between">
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <Badge variant="outline" className="text-[10px] uppercase font-code border-white/10">{item.metadata.mood}</Badge>
-                            <span className="text-[10px] font-code text-muted-foreground">{new Date(item.timestamp).toLocaleTimeString()}</span>
+                            <Badge variant="outline" className="text-[10px] uppercase font-code border-white/10">{item.metadata?.mood || 'Generated'}</Badge>
+                            <span className="text-[10px] font-code text-muted-foreground">
+                              {item.timestamp ? new Date(item.timestamp).toLocaleTimeString() : 'Recent'}
+                            </span>
                           </div>
                           <p className="text-sm font-medium line-clamp-2 italic text-foreground/80 leading-relaxed">
                             "{item.prompt}"
@@ -331,9 +315,6 @@ export default function Home() {
                             setResult(item);
                             setActiveSection('stage');
                           }}>Load Scene</Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary">
-                            <Share className="w-3.5 h-3.5" />
-                          </Button>
                         </div>
                       </div>
                     </div>
@@ -376,7 +357,6 @@ export default function Home() {
                   <Badge className="bg-primary/20 text-primary border-none px-4 py-1 text-xs uppercase tracking-widest font-bold">
                     {profile?.plan || 'Free Tier'}
                   </Badge>
-                  <span className="text-xs text-muted-foreground">Active since {profile?.createdAt ? new Date(profile.createdAt.seconds * 1000).toLocaleDateString() : 'Recent'}</span>
                 </div>
               </div>
               <Button 
@@ -407,10 +387,6 @@ export default function Home() {
                         <p className="text-xs text-muted-foreground">Standard AI synthesis with web-tier performance.</p>
                       </div>
                       <div className="text-3xl font-headline font-bold">$0<span className="text-sm font-normal text-muted-foreground ml-1">/mo</span></div>
-                      <ul className="space-y-2 text-[10px] uppercase tracking-widest text-muted-foreground">
-                        <li className="flex items-center gap-2 opacity-50"><CheckCircle2 className="w-3 h-3" /> 10 Generates / Day</li>
-                        <li className="flex items-center gap-2 opacity-50"><CheckCircle2 className="w-3 h-3" /> Basic GSAP Runtimes</li>
-                      </ul>
                       <Button variant="outline" className="w-full border-white/10" disabled={profile?.plan === 'free'}>
                         {profile?.plan === 'free' ? "ACTIVE SYSTEM" : "DOWNGRADE"}
                       </Button>
@@ -431,71 +407,12 @@ export default function Home() {
                         <p className="text-xs text-muted-foreground">Elite GPU synthesis with cinematic morphing.</p>
                       </div>
                       <div className="text-3xl font-headline font-bold">$29<span className="text-sm font-normal text-muted-foreground ml-1">/mo</span></div>
-                      <ul className="space-y-2 text-[10px] uppercase tracking-widest text-muted-foreground">
-                        <li className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-accent" /> Unlimited Synthesis</li>
-                        <li className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-accent" /> Advanced Morph Engine</li>
-                        <li className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-accent" /> Raw Source Exports</li>
-                      </ul>
                       <Button onClick={handleUpgradePlan} className="w-full bg-accent hover:bg-accent/90 glow-accent text-accent-foreground font-bold" disabled={profile?.plan === 'pro'}>
                         {profile?.plan === 'pro' ? "PRO SYSTEM ACTIVE" : "UPGRADE PROTOCOL"}
                       </Button>
                     </Card>
                   </div>
                 </section>
-
-                <section className="space-y-4">
-                  <h3 className="text-[10px] font-code text-primary uppercase tracking-widest flex items-center gap-2">
-                    <History className="w-3.5 h-3.5" />
-                    Resource Consumption
-                  </h3>
-                  <Card className="glass-darker border-white/5 p-6 space-y-6">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between text-[10px] uppercase tracking-widest">
-                        <span className="text-muted-foreground">Monthly Credits</span>
-                        <span className="text-foreground">842 / 1000</span>
-                      </div>
-                      <Progress value={84} className="h-1.5 bg-white/5" />
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between text-[10px] uppercase tracking-widest">
-                        <span className="text-muted-foreground">GPU Compute Units</span>
-                        <span className="text-foreground">Unlimited (Pro)</span>
-                      </div>
-                      <Progress value={100} className="h-1.5 bg-white/5" />
-                    </div>
-                  </Card>
-                </section>
-              </div>
-
-              <div className="space-y-8">
-                <section className="space-y-4">
-                  <h3 className="text-[10px] font-code text-muted-foreground uppercase tracking-widest">Connected Links</h3>
-                  <Card className="glass border-white/5 p-4 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center"><Github className="w-4 h-4" /></div>
-                        <span className="text-xs">GitHub Identity</span>
-                      </div>
-                      <Badge variant="outline" className="border-emerald-500/20 text-emerald-500 text-[8px] uppercase">Link Active</Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center"><Code2 className="w-4 h-4" /></div>
-                        <span className="text-xs">API Gateway</span>
-                      </div>
-                      <Badge variant="outline" className="border-white/10 text-muted-foreground text-[8px] uppercase">Inactive</Badge>
-                    </div>
-                  </Card>
-                </section>
-
-                <Card className="glass-darker border-white/5 p-6 text-center space-y-4">
-                  <ShieldCheck className="w-12 h-12 text-primary mx-auto opacity-50" />
-                  <div className="space-y-1">
-                    <h4 className="font-headline font-bold text-sm">Session Security</h4>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest">2FA is recommended for master entities.</p>
-                  </div>
-                  <Button variant="outline" size="sm" className="w-full text-[10px] uppercase tracking-widest border-white/5">Configure MFA</Button>
-                </Card>
               </div>
             </div>
 
@@ -504,9 +421,6 @@ export default function Home() {
               <DialogContent className="glass-darker border-white/10 sm:max-w-[425px]">
                 <DialogHeader>
                   <DialogTitle className="text-xl font-headline font-bold tracking-tight text-glow uppercase">Update Identity Protocol</DialogTitle>
-                  <DialogDescription className="text-muted-foreground text-xs uppercase tracking-widest">
-                    Synchronize your display name across the AetherMotion cloud.
-                  </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="space-y-2">
@@ -515,168 +429,29 @@ export default function Home() {
                       id="name"
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
-                      className="bg-white/5 border-white/10 col-span-3 focus:border-primary/50 transition-all"
-                      placeholder="Enter identity label..."
+                      className="bg-white/5 border-white/10 col-span-3"
                     />
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => setIsProfileModalOpen(false)}
-                    className="text-xs uppercase tracking-widest font-headline"
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={handleUpdateProfile}
-                    className="bg-primary hover:bg-primary/90 glow-primary text-xs uppercase tracking-widest font-headline"
-                    disabled={isUpdatingProfile || !newName.trim()}
-                  >
-                    {isUpdatingProfile ? "Synchronizing..." : "Update Protocol"}
+                  <Button variant="ghost" onClick={() => setIsProfileModalOpen(false)}>Cancel</Button>
+                  <Button onClick={handleUpdateProfile} className="bg-primary hover:bg-primary/90 glow-primary" disabled={isUpdatingProfile}>
+                    Update Protocol
                   </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
         );
-      case 'library':
-        return (
-          <div className="flex-1 p-8 space-y-8 overflow-hidden flex flex-col">
-            <div>
-              <h2 className="text-3xl font-headline font-bold tracking-tight text-glow">Master Library</h2>
-              <p className="text-muted-foreground">Curated high-end templates for professional motion graphics systems.</p>
-            </div>
-            
-            <ScrollArea className="flex-1 pr-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-12">
-                {[
-                  { title: "Fluid Neumorphic Orb", category: "Abstract", complexity: "Advanced" },
-                  { title: "Orbital Circuitry", category: "Sci-Fi", complexity: "High" },
-                  { title: "Holographic Interface", category: "UI", complexity: "Expert" },
-                  { title: "Bionic Bloom", category: "Organic", complexity: "Medium" },
-                  { title: "Cybernetic Grid", category: "Environmental", complexity: "High" },
-                  { title: "Aetheric Pulse", category: "Particles", complexity: "Advanced" }
-                ].map((item, idx) => (
-                  <Card key={idx} className="glass border-white/5 group hover:border-primary/50 transition-all overflow-hidden cursor-pointer" onClick={() => handleGenerate(item.title)}>
-                    <div className="aspect-video bg-black/40 relative flex items-center justify-center overflow-hidden">
-                      <div className="w-20 h-20 rounded-full border border-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <Library className="w-8 h-8 text-primary/40" />
-                      </div>
-                      <div className="absolute top-3 left-3 flex gap-2">
-                        <Badge className="bg-primary/20 text-primary text-[9px] border-none uppercase tracking-widest">{item.category}</Badge>
-                      </div>
-                    </div>
-                    <div className="p-4 space-y-3">
-                      <h3 className="font-headline font-bold text-sm tracking-tight">{item.title}</h3>
-                      <div className="flex items-center justify-between text-[10px] font-code text-muted-foreground uppercase">
-                        <span>Complexity: {item.complexity}</span>
-                        <ChevronRight className="w-3 h-3" />
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
-        );
-      case 'settings':
-        return (
-          <div className="flex-1 p-8 space-y-12 max-w-2xl mx-auto w-full">
-            <div>
-              <h2 className="text-3xl font-headline font-bold tracking-tight text-glow">Engine Settings</h2>
-              <p className="text-muted-foreground">Calibrate the AetherMotion synthesis engine parameters.</p>
-            </div>
-
-            <div className="space-y-8">
-              <section className="space-y-4">
-                <h3 className="text-[10px] font-code text-primary uppercase tracking-widest flex items-center gap-2">
-                  <Settings2 className="w-3.5 h-3.5" />
-                  Synthesis Intelligence
-                </h3>
-                <Card className="glass-darker border-white/5 p-6 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">Model Priority</p>
-                      <p className="text-xs text-muted-foreground">Choose between speed or cinematic detail.</p>
-                    </div>
-                    <Badge variant="outline" className="border-primary/20 text-primary">High Fidelity</Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">Auto-Optimization</p>
-                      <p className="text-xs text-muted-foreground">Automatically simplify paths for web performance.</p>
-                    </div>
-                    <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase tracking-widest border-white/5">Enabled</Button>
-                  </div>
-                </Card>
-              </section>
-
-              <section className="space-y-4">
-                <h3 className="text-[10px] font-code text-accent uppercase tracking-widest flex items-center gap-2">
-                  <Layers className="w-3.5 h-3.5" />
-                  Workspace Runtime
-                </h3>
-                <Card className="glass-darker border-white/5 p-6 space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">Live Inspector Auto-Scroll</p>
-                      <p className="text-xs text-muted-foreground">Follow code generation in real-time.</p>
-                    </div>
-                    <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase tracking-widest border-white/5">Enabled</Button>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">GPU Acceleration</p>
-                      <p className="text-xs text-muted-foreground">Use system GPU for rendering complex timelines.</p>
-                    </div>
-                    <Button variant="outline" size="sm" className="h-8 text-[10px] uppercase tracking-widest border-white/5">Active</Button>
-                  </div>
-                </Card>
-              </section>
-            </div>
-          </div>
-        );
-      case 'docs':
-        return (
-          <div className="flex-1 p-8 space-y-8 max-w-4xl">
-            <div>
-              <h2 className="text-3xl font-headline font-bold tracking-tight text-glow">Documentation</h2>
-              <p className="text-muted-foreground">Master the art of AI-driven vector motion choreography.</p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[
-                { title: "Prompt Engineering", desc: "How to write perfect blueprints for the synthesis engine.", icon: BookOpen },
-                { title: "GSAP Integration", desc: "Exporting and integrating AI animations into your apps.", icon: Code2 },
-                { title: "Custom Properties", desc: "Controlling layer IDs and semantic target IDs.", icon: Layers },
-                { title: "Engine Runtime", desc: "Understanding the technical architecture of AetherMotion.", icon: Settings2 }
-              ].map((doc, idx) => (
-                <Card key={idx} className="glass border-white/5 p-6 hover:bg-white/5 transition-all cursor-pointer group">
-                  <doc.icon className="w-8 h-8 text-primary mb-4 group-hover:scale-110 transition-transform" />
-                  <h3 className="font-headline font-bold text-lg mb-2">{doc.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{doc.desc}</p>
-                </Card>
-              ))}
-            </div>
-          </div>
-        );
       default:
-        return (
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-muted-foreground animate-pulse">Initializing Interface...</p>
-          </div>
-        );
+        return null;
     }
   };
 
   return (
     <AppShell activeSection={activeSection} onSectionChange={setActiveSection}>
       <div className="flex h-full w-full overflow-hidden">
-        {/* Main Work Area */}
         {renderContent()}
-
-        {/* Right Inspector Panel - Only show in stage view */}
         {activeSection === 'stage' && (
           <aside className="w-[400px] h-full hidden xl:block z-50">
             <LiveInspector 
