@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Intelligent resilience utilities for AI infrastructure.
  * Provides exponential backoff, retry logic, and quota management.
@@ -38,9 +39,13 @@ export async function withRetry<T>(
       return await fn();
     } catch (error: any) {
       lastError = error;
+      
+      // Detailed error check
+      const errorMsg = error.message?.toUpperCase() || '';
       const isQuotaError = 
-        error.message?.includes('429') || 
-        error.message?.includes('RESOURCE_EXHAUSTED') ||
+        errorMsg.includes('429') || 
+        errorMsg.includes('RESOURCE_EXHAUSTED') ||
+        errorMsg.includes('QUOTA') ||
         error.status === 429;
 
       if (isQuotaError && attempt < maxRetries) {
@@ -51,6 +56,8 @@ export async function withRetry<T>(
       }
 
       if (isQuotaError) {
+        // We throw this specifically so the caller (Server Action or Page)
+        // can decide whether to trigger the fallback engine.
         throw new QuotaExhaustedError();
       }
 
