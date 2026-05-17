@@ -1,6 +1,7 @@
+
 'use server';
 /**
- * @fileOverview Vector Topology Morpher utilizing centralized AI infrastructure.
+ * @fileOverview Vector Topology Morpher utilizing centralized AI Infrastructure.
  */
 
 import { ai, MODEL_ID } from '@/ai/genkit';
@@ -32,7 +33,7 @@ export async function morphSvgBetweenGeneratedStates(input: SvgMorphInput): Prom
 
 const morphSvgPrompt = ai.definePrompt({
   name: 'morphSvgPrompt',
-  model: MODEL_ID, // Use centralized model ID
+  model: MODEL_ID, // Use centralized stable model
   input: { schema: SvgMorphInputSchema },
   output: { schema: SvgMorphOutputSchema },
   prompt: `You are an elite Vector Topology Morpher. Generate GSAP code to morph SVG 1 into SVG 2.
@@ -55,8 +56,8 @@ const morphSvgFlow = ai.defineFlow(
       if (!output) throw new Error('Morphing failure: No topology output generated.');
       return output;
     } catch (error: any) {
-      console.error('Morphing Engine Error:', error);
-      throw new Error(`Topological morphing failed: ${error.message || 'Unexpected server response'}`);
+      console.error('[Morphing-Error]', error);
+      throw new Error(`Topological morphing failed: ${error.message || 'Unexpected engine response'}`);
     }
   }
 );

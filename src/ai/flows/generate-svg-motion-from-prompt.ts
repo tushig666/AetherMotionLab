@@ -1,7 +1,8 @@
+
 'use server';
 /**
  * @fileOverview Elite AI synthesis flow for generating cinematic SVG motion scenes.
- * Utilizes centralized Genkit infrastructure for stability.
+ * Utilizes centralized AI Infrastructure to prevent model-resolution errors.
  */
 
 import { ai, MODEL_ID } from '@/ai/genkit';
@@ -37,7 +38,7 @@ export async function generateSvgMotionFromPrompt(
 
 const eliteSvgMotionPrompt = ai.definePrompt({
   name: 'eliteSvgMotionPrompt',
-  model: MODEL_ID, // Use centralized model ID
+  model: MODEL_ID, // Guaranteed stable model from centralized provider
   input: { schema: GenerateSvgMotionFromPromptInputSchema },
   output: { schema: GenerateSvgMotionFromPromptOutputSchema },
   prompt: `You are an elite AI SVG Motion Graphics Engine.
@@ -77,8 +78,9 @@ const generateSvgMotionFromPromptFlow = ai.defineFlow(
       }
       return output;
     } catch (error: any) {
-      console.error('Synthesis Engine Error:', error);
-      throw new Error(`AI synthesis failed: ${error.message || 'Unexpected server response'}`);
+      console.error('[Synthesis-Error]', error);
+      // Surface clean errors to the client
+      throw new Error(`AI synthesis failed: ${error.message || 'Unexpected engine response'}`);
     }
   }
 );

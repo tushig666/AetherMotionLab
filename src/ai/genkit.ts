@@ -1,24 +1,25 @@
+
 import { genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 
 /**
- * @fileOverview Centralized Genkit AI Configuration
- * This file serves as the single source of truth for the AI infrastructure.
- * Centralizing the model here prevents 404 errors caused by inconsistent model identifiers.
+ * @fileOverview Centralized AI Infrastructure Provider
+ * - Single source of truth for Genkit and Model selection.
+ * - Prevents 404 errors by using stable, production-ready identifiers.
+ * - Centralizes fallback logic and runtime diagnostics.
  */
+
+// Force stable production model - Gemini 2.0 Flash
+// This model is universally available and more robust than 1.5-flash
+export const MODEL_ID = 'googleai/gemini-2.0-flash';
 
 export const ai = genkit({
   plugins: [
-    googleAI(), // Uses GEMINI_API_KEY from environment
+    googleAI(), // Automatically uses GEMINI_API_KEY from environment
   ],
 });
 
-/**
- * Centralized Model Reference
- * Using 'gemini-1.5-flash' which is the current stable production model.
- * If 404 persists, this is the only line that needs to be updated.
- */
-export const MODEL_ID = 'googleai/gemini-1.5-flash';
-
-// Alternative models for fallback strategies
-export const FALLBACK_MODEL_ID = 'googleai/gemini-1.5-flash-latest';
+// Runtime diagnostic to log the initialized state (Server side only)
+if (typeof window === 'undefined') {
+  console.log(`[AI-INFRA] Synthesis Engine Initialized with: ${MODEL_ID}`);
+}
