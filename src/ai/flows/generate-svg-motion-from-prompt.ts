@@ -1,13 +1,12 @@
 'use server';
 /**
  * @fileOverview Elite AI synthesis flow for generating cinematic SVG motion scenes.
- * This flow utilizes advanced prompt engineering to ensure high-fidelity, animation-ready vector output.
+ * Utilizes centralized Genkit infrastructure for stability.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, MODEL_ID } from '@/ai/genkit';
 import { z } from 'genkit';
 
-// Elite Output Schema - Matches the strict JSON requirement
 const GenerateSvgMotionFromPromptOutputSchema = z.object({
   title: z.string().describe('Cinematic title of the generated scene.'),
   description: z.string().describe('Detailed artistic description of the composition.'),
@@ -24,7 +23,6 @@ const GenerateSvgMotionFromPromptOutputSchema = z.object({
 
 export type GenerateSvgMotionFromPromptOutput = z.infer<typeof GenerateSvgMotionFromPromptOutputSchema>;
 
-// Input Schema
 const GenerateSvgMotionFromPromptInputSchema = z.object({
   prompt: z.string().describe('A natural language description of the desired SVG motion scene.'),
 });
@@ -39,10 +37,10 @@ export async function generateSvgMotionFromPrompt(
 
 const eliteSvgMotionPrompt = ai.definePrompt({
   name: 'eliteSvgMotionPrompt',
-  model: 'googleai/gemini-1.5-flash',
+  model: MODEL_ID, // Use centralized model ID
   input: { schema: GenerateSvgMotionFromPromptInputSchema },
   output: { schema: GenerateSvgMotionFromPromptOutputSchema },
-  prompt: `You are an elite AI SVG Motion Graphics Engine running inside a Firebase + Gemini production environment.
+  prompt: `You are an elite AI SVG Motion Graphics Engine.
 
 Your task is to generate:
 1. Advanced SVG artwork
@@ -50,65 +48,16 @@ Your task is to generate:
 3. GSAP animation timelines
 4. Structured scene metadata
 
-Return ONLY strict valid JSON.
+Return ONLY strict valid JSON. No markdown, no comments.
 
-DO NOT:
-- use markdown
-- use code blocks
-- explain anything
-- add extra text
-- add comments
+SVG REQUIREMENTS:
+- Premium cinematic multi-layered SVG.
+- Semantic IDs (e.g., #core, #rings, #particles).
+- Complex gradients and filters.
 
-SVG RULES:
-- Generate premium cinematic SVG scenes
-- SVG must be layered using <g> tags with semantic IDs
-- SVG must be animation-ready
-- Use semantic IDs/classes (e.g., #energy-core, #orbit-ring)
-- Use grouped structures
-- Use complex gradients and defs
-- Use glow filters and masking
-- Use transform-friendly layouts
-- Use visually impressive composition (cinematic, futuristic, premium)
-
-MANDATORY SVG GROUPS TO CONSIDER:
-- #background-layer
-- #main-object
-- #particles-layer
-- #energy-core
-- #orbit-ring
-- #light-trails
-
-ANIMATION RULES:
-Generate BOTH advanced CSS keyframes and GSAP timelines.
-Motion must feel: cinematic, organic, futuristic, fluid, premium.
-
-MANDATORY ANIMATION TYPES:
-- floating & scale breathing
-- pulsing glow effects
-- orbital movement & parallax drift
-- stagger animations for groups
-- particle motion & light trails
-
-GSAP RULES:
-- Use gsap.timeline()
-- Use repeat: -1
-- Use yoyo: true where useful
-- Use stagger: 0.1 or similar
-- Use power2.inOut or similar easing
-- Use transformOrigin: "50% 50%" or "center center"
-
-CSS RULES:
-Generate advanced keyframes including: float, pulse, drift, rotate, shimmer, flicker, glowPulse.
-
-COLOR RULES:
-Use cinematic futuristic palettes: neon cyan, electric purple, holographic blue, deep black, atmospheric gradients.
-
-QUALITY RULES:
-The generated scene must feel world-class, visually expensive, and highly detailed.
-NEVER generate simplistic SVG, flat icons, or poor compositions.
-
-MORPHING SUPPORT:
-Keep SVG groups modular and organized to support future morph transitions.
+ANIMATION REQUIREMENTS:
+- Smooth, cinematic, futuristic motion.
+- CSS for basic loops, GSAP for complex choreography.
 
 USER PROMPT:
 "{{{prompt}}}"`,
@@ -128,7 +77,7 @@ const generateSvgMotionFromPromptFlow = ai.defineFlow(
       }
       return output;
     } catch (error: any) {
-      console.error('Elite Synthesis Error:', error);
+      console.error('Synthesis Engine Error:', error);
       throw new Error(`AI synthesis failed: ${error.message || 'Unexpected server response'}`);
     }
   }
