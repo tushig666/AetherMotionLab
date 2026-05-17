@@ -1,0 +1,44 @@
+
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user account details and subscription plan information.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "photoURL": { "type": "string" },
+        "plan": { "type": "string", "enum": ["free", "pro"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "plan"]
+    },
+    "Generation": {
+      "title": "Motion Generation",
+      "description": "Stores generated SVG and GSAP animation data.",
+      "type": "object",
+      "properties": {
+        "prompt": { "type": "string" },
+        "svgContent": { "type": "string" },
+        "gsapAnimationCode": { "type": "string" },
+        "metadata": { "type": "object" },
+        "userId": { "type": "string" },
+        "timestamp": { "type": "number" }
+      }
+    }
+  },
+  "auth": {
+    "providers": ["google.com", "github.com", "password"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "#/entities/UserProfile",
+      "description": "User profile document."
+    },
+    "/users/{userId}/generations/{genId}": {
+      "schema": "#/entities/Generation",
+      "description": "User's personal generation history."
+    }
+  }
+}

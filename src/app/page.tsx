@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -7,17 +8,45 @@ import { AITerminal } from '@/components/terminal/AITerminal';
 import { LiveInspector } from '@/components/panels/LiveInspector';
 import { generateSvgMotionFromPrompt, type GenerateSvgMotionFromPromptOutput } from '@/ai/flows/generate-svg-motion-from-prompt';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Wand2, ChevronRight, Share, Layers, History, Play, Trash2, Library, BookOpen, Settings2 } from 'lucide-react';
+import { 
+  Sparkles, 
+  Wand2, 
+  ChevronRight, 
+  Share, 
+  Layers, 
+  History, 
+  Play, 
+  Trash2, 
+  Library, 
+  BookOpen, 
+  Settings2,
+  User as UserIcon,
+  CreditCard,
+  ShieldCheck,
+  Zap,
+  CheckCircle2,
+  Code2
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useUser, useFirestore, useDoc } from '@/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Progress } from '@/components/ui/progress';
 
 export default function Home() {
   const [activeSection, setActiveSection] = useState<SectionID>('stage');
   const [result, setResult] = useState<GenerateSvgMotionFromPromptOutput | null>(null);
   const [history, setHistory] = useState<(GenerateSvgMotionFromPromptOutput & { id: string, timestamp: number, prompt: string })[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  
+  const { user } = useUser();
+  const db = useFirestore();
+  const userProfileRef = user ? doc(db!, 'users', user.uid) : null;
+  const { data: profile } = useDoc(userProfileRef);
+  
   const { toast } = useToast();
 
   const handleGenerate = async (prompt: string) => {
@@ -50,6 +79,15 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleUpgradePlan = () => {
+    if (!user || !userProfileRef) return;
+    updateDoc(userProfileRef, { plan: 'pro' });
+    toast({
+      title: "PLAN UPGRADED",
+      description: "Welcome to AetherMotion Pro. Full GPU acceleration enabled.",
+    });
   };
 
   const renderContent = () => {
@@ -174,6 +212,153 @@ export default function Home() {
                 )}
               </div>
             </ScrollArea>
+          </div>
+        );
+      case 'profile':
+        return (
+          <div className="flex-1 p-8 space-y-12 max-w-5xl mx-auto w-full">
+            <header className="flex items-end gap-8 pb-12 border-b border-white/5">
+              <div className="relative group">
+                <Avatar className="w-32 h-32 rounded-2xl border-2 border-white/10 glow-primary">
+                  <AvatarImage src={user?.photoURL || ''} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-4xl font-bold">
+                    {user?.displayName?.charAt(0) || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-primary rounded-xl flex items-center justify-center border-4 border-[#07070D]">
+                  <ShieldCheck className="w-5 h-5 text-white" />
+                </div>
+              </div>
+              <div className="flex-1 space-y-4">
+                <div className="space-y-1">
+                  <h2 className="text-4xl font-headline font-bold tracking-tight text-glow">
+                    {user?.displayName || 'Entity Placeholder'}
+                  </h2>
+                  <p className="text-muted-foreground font-code text-sm tracking-widest uppercase">
+                    ID: {user?.uid.slice(0, 12)}...
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-primary/20 text-primary border-none px-4 py-1 text-xs uppercase tracking-widest font-bold">
+                    {profile?.plan || 'Free Tier'}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">Active since {new Date(profile?.createdAt?.seconds * 1000).toLocaleDateString() || 'Recent'}</span>
+                </div>
+              </div>
+              <Button variant="outline" className="border-white/10 h-11 px-8 uppercase tracking-widest font-headline">
+                Update Identity
+              </Button>
+            </header>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="md:col-span-2 space-y-8">
+                <section className="space-y-4">
+                  <h3 className="text-[10px] font-code text-primary uppercase tracking-widest flex items-center gap-2">
+                    <CreditCard className="w-3.5 h-3.5" />
+                    Subscription Matrix
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Card className={cn(
+                      "glass border-white/5 p-6 space-y-6 relative overflow-hidden transition-all",
+                      profile?.plan === 'free' ? "border-primary/40 ring-1 ring-primary/20" : ""
+                    )}>
+                      {profile?.plan === 'free' && <div className="absolute top-0 right-0 p-2"><CheckCircle2 className="text-primary w-4 h-4" /></div>}
+                      <div className="space-y-2">
+                        <h4 className="font-headline font-bold text-lg">Aether Free</h4>
+                        <p className="text-xs text-muted-foreground">Standard AI synthesis with web-tier performance.</p>
+                      </div>
+                      <div className="text-3xl font-headline font-bold">$0<span className="text-sm font-normal text-muted-foreground ml-1">/mo</span></div>
+                      <ul className="space-y-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                        <li className="flex items-center gap-2 opacity-50"><CheckCircle2 className="w-3 h-3" /> 10 Generates / Day</li>
+                        <li className="flex items-center gap-2 opacity-50"><CheckCircle2 className="w-3 h-3" /> Basic GSAP Runtimes</li>
+                      </ul>
+                      <Button variant="outline" className="w-full border-white/10" disabled={profile?.plan === 'free'}>
+                        {profile?.plan === 'free' ? "ACTIVE SYSTEM" : "DOWNGRADE"}
+                      </Button>
+                    </Card>
+
+                    <Card className={cn(
+                      "glass border-white/5 p-6 space-y-6 relative overflow-hidden group transition-all",
+                      profile?.plan === 'pro' ? "border-accent/40 ring-1 ring-accent/20" : "hover:border-accent/40"
+                    )}>
+                      <div className="absolute top-0 right-0 p-3 rotate-12 opacity-10 group-hover:rotate-0 transition-all">
+                        <Zap className="w-12 h-12 text-accent" />
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-headline font-bold text-lg">Aether Pro</h4>
+                          <Badge className="bg-accent/20 text-accent text-[8px] border-none uppercase">Recommended</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Elite GPU synthesis with cinematic morphing.</p>
+                      </div>
+                      <div className="text-3xl font-headline font-bold">$29<span className="text-sm font-normal text-muted-foreground ml-1">/mo</span></div>
+                      <ul className="space-y-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                        <li className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-accent" /> Unlimited Synthesis</li>
+                        <li className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-accent" /> Advanced Morph Engine</li>
+                        <li className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-accent" /> Raw Source Exports</li>
+                      </ul>
+                      <Button onClick={handleUpgradePlan} className="w-full bg-accent hover:bg-accent/90 glow-accent text-accent-foreground font-bold" disabled={profile?.plan === 'pro'}>
+                        {profile?.plan === 'pro' ? "PRO SYSTEM ACTIVE" : "UPGRADE PROTOCOL"}
+                      </Button>
+                    </Card>
+                  </div>
+                </section>
+
+                <section className="space-y-4">
+                  <h3 className="text-[10px] font-code text-primary uppercase tracking-widest flex items-center gap-2">
+                    <History className="w-3.5 h-3.5" />
+                    Resource Consumption
+                  </h3>
+                  <Card className="glass-darker border-white/5 p-6 space-y-6">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-[10px] uppercase tracking-widest">
+                        <span className="text-muted-foreground">Monthly Credits</span>
+                        <span className="text-foreground">842 / 1000</span>
+                      </div>
+                      <Progress value={84} className="h-1.5 bg-white/5" />
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-[10px] uppercase tracking-widest">
+                        <span className="text-muted-foreground">GPU Compute Units</span>
+                        <span className="text-foreground">Unlimited (Pro)</span>
+                      </div>
+                      <Progress value={100} className="h-1.5 bg-white/5" />
+                    </div>
+                  </Card>
+                </section>
+              </div>
+
+              <div className="space-y-8">
+                <section className="space-y-4">
+                  <h3 className="text-[10px] font-code text-muted-foreground uppercase tracking-widest">Connected Links</h3>
+                  <Card className="glass border-white/5 p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center"><Github className="w-4 h-4" /></div>
+                        <span className="text-xs">GitHub Identity</span>
+                      </div>
+                      <Badge variant="outline" className="border-emerald-500/20 text-emerald-500 text-[8px] uppercase">Link Active</Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center"><Code2 className="w-4 h-4" /></div>
+                        <span className="text-xs">API Gateway</span>
+                      </div>
+                      <Badge variant="outline" className="border-white/10 text-muted-foreground text-[8px] uppercase">Inactive</Badge>
+                    </div>
+                  </Card>
+                </section>
+
+                <Card className="glass-darker border-white/5 p-6 text-center space-y-4">
+                  <ShieldCheck className="w-12 h-12 text-primary mx-auto opacity-50" />
+                  <div className="space-y-1">
+                    <h4 className="font-headline font-bold text-sm">Session Security</h4>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest">2FA is recommended for master entities.</p>
+                  </div>
+                  <Button variant="outline" size="sm" className="w-full text-[10px] uppercase tracking-widest border-white/5">Configure MFA</Button>
+                </Card>
+              </div>
+            </div>
           </div>
         );
       case 'library':
@@ -326,5 +511,3 @@ export default function Home() {
     </AppShell>
   );
 }
-
-import { Code2 } from 'lucide-react';
