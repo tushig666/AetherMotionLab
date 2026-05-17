@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -5,6 +6,7 @@ import { gsap } from 'gsap';
 import { Maximize2, RefreshCw, Play, Pause, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface MotionStageProps {
   svgContent: string;
@@ -22,6 +24,7 @@ export const MotionStage: React.FC<MotionStageProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!stageRef.current || !svgContent) return;
@@ -31,22 +34,32 @@ export const MotionStage: React.FC<MotionStageProps> = ({
     
     // Execute GSAP code
     try {
-      // Clear existing animations
+      // Clear existing animations on the whole stage
       gsap.killTweensOf(stageRef.current.querySelectorAll('*'));
       
       // Execute the code
-      // The generated code usually contains an IIFE or starts a timeline
+      // The generated code usually contains an IIFE or starts a timeline targeting IDs
       const execute = new Function('gsap', 'container', gsapCode);
       execute(gsap, stageRef.current);
+      setIsPlaying(true);
     } catch (e) {
       console.warn("GSAP execution error:", e);
     }
   }, [svgContent, gsapCode]);
 
   const handleTogglePlay = () => {
-    const timelines = gsap.getTweensOf(stageRef.current?.querySelectorAll('*') || []);
-    // This is simplified; in a real app we'd track a master timeline
-    setIsPlaying(!isPlaying);
+    const allElements = stageRef.current?.querySelectorAll('*');
+    if (!allElements) return;
+
+    const tweens = gsap.getTweensOf(allElements);
+    
+    if (isPlaying) {
+      tweens.forEach(t => t.pause());
+      setIsPlaying(false);
+    } else {
+      tweens.forEach(t => t.play());
+      setIsPlaying(true);
+    }
   };
 
   const handleReset = () => {
@@ -55,6 +68,44 @@ export const MotionStage: React.FC<MotionStageProps> = ({
     const execute = new Function('gsap', 'container', gsapCode);
     execute(gsap, stageRef.current);
     setIsPlaying(true);
+    toast({
+      title: "TIMELINE RESET",
+      description: "Animation sequence restarted from initial vector state.",
+    });
+  };
+
+  const handleFullscreen = () => {
+    if (!containerRef.current) return;
+    if (!document.fullscreenElement) {
+      containerRef.current.requestFullscreen().catch(err => {
+        toast({
+          variant: "destructive",
+          title: "FULLSCREEN ERROR",
+          description: "Could not enter immersive mode.",
+        });
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
+  const handleDownloadSVG = () => {
+    if (!stageRef.current || !svgContent) return;
+    
+    const svgData = stageRef.current.innerHTML;
+    const svgBlob = new Blob([svgData], {type: "image/svg+xml;charset=utf-8"});
+    const svgUrl = URL.createObjectURL(svgBlob);
+    const downloadLink = document.createElement("a");
+    downloadLink.href = svgUrl;
+    downloadLink.download = `aether-vector-${Date.now()}.svg`;
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    
+    toast({
+      title: "VECTOR EXPORTED",
+      description: "Static SVG asset saved to local storage.",
+    });
   };
 
   return (
@@ -87,18 +138,18 @@ export const MotionStage: React.FC<MotionStageProps> = ({
       {/* Controls HUD */}
       {!isLoading && svgContent && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 glass px-4 py-2 rounded-full border-white/5 shadow-2xl">
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" onClick={handleReset}>
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary h-8 w-8" onClick={handleReset} title="Reset Animation">
             <RefreshCw className="w-4 h-4" />
           </Button>
           <div className="w-px h-4 bg-white/10 mx-1" />
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" onClick={handleTogglePlay}>
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary h-8 w-8" onClick={handleTogglePlay} title={isPlaying ? "Pause" : "Play"}>
             {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
           </Button>
           <div className="w-px h-4 bg-white/10 mx-1" />
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary h-8 w-8" onClick={handleFullscreen} title="Toggle Fullscreen">
             <Maximize2 className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
+          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary h-8 w-8" onClick={handleDownloadSVG} title="Download SVG">
             <Download className="w-4 h-4" />
           </Button>
         </div>
