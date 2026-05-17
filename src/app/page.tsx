@@ -58,7 +58,7 @@ export default function Home() {
   
   const userProfileRef = useMemo(() => (user && db) ? doc(db, 'users', user.uid) : null, [user, db]);
   const generationsRef = useMemo(() => (user && db) ? collection(db, 'users', user.uid, 'generations') : null, [user, db]);
-  const historyQuery = useMemo(() => generationsRef ? query(generationsRef, orderBy('timestamp', 'desc'), limit(20)) : null, [generationsRef]);
+  const historyQuery = useMemo(() => generationsRef ? query(generationsRef, orderBy('createdAt', 'desc'), limit(20)) : null, [generationsRef]);
 
   const { data: profile } = useDoc(userProfileRef);
   const { data: firestoreHistory } = useCollection(historyQuery);
@@ -72,6 +72,7 @@ export default function Home() {
   }, [user]);
 
   const handleGenerate = async (prompt: string) => {
+    if (!prompt.trim()) return;
     setIsLoading(true);
     setActiveSection('stage');
     try {
@@ -84,11 +85,11 @@ export default function Home() {
         prompt: prompt
       };
 
-      if (generationsRef) {
+      if (generationsRef && user) {
         addDoc(generationsRef, {
           ...generationData,
           createdAt: serverTimestamp(),
-          userId: user?.uid
+          userId: user.uid
         }).catch(err => {
           if (err.code === 'permission-denied') {
             errorEmitter.emitPermissionError(new FirestorePermissionError({
@@ -107,6 +108,7 @@ export default function Home() {
         description: "Vector topology and motion choreography synthesized successfully.",
       });
     } catch (error: any) {
+      console.error('Generation Error:', error);
       toast({
         variant: "destructive",
         title: "SYNTHESIS FAILED",
@@ -171,6 +173,7 @@ export default function Home() {
     a.download = `aether-motion-${Date.now()}.html`;
     a.click();
     URL.revokeObjectURL(url);
+    toast({ title: "ASSETS EXPORTED" });
   };
 
   const renderContent = () => {

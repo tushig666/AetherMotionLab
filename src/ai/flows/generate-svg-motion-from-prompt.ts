@@ -82,6 +82,7 @@ const generateSvgMotionFromPromptFlow = ai.defineFlow(
       }
       return output;
     } catch (error: any) {
+      // Re-throw the error with a descriptive message for the client to handle
       throw new Error(`AI synthesis failed: ${error.message || 'Unexpected server response'}`);
     }
   }
