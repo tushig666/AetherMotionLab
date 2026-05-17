@@ -25,7 +25,8 @@ import {
   ShieldCheck,
   Zap,
   CheckCircle2,
-  Code2
+  Code2,
+  Github
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -35,6 +36,7 @@ import { useUser, useFirestore, useDoc } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
 
 export default function Home() {
   const [activeSection, setActiveSection] = useState<SectionID>('stage');
@@ -242,7 +244,7 @@ export default function Home() {
                   <Badge className="bg-primary/20 text-primary border-none px-4 py-1 text-xs uppercase tracking-widest font-bold">
                     {profile?.plan || 'Free Tier'}
                   </Badge>
-                  <span className="text-xs text-muted-foreground">Active since {new Date(profile?.createdAt?.seconds * 1000).toLocaleDateString() || 'Recent'}</span>
+                  <span className="text-xs text-muted-foreground">Active since {profile?.createdAt ? new Date(profile.createdAt.seconds * 1000).toLocaleDateString() : 'Recent'}</span>
                 </div>
               </div>
               <Button variant="outline" className="border-white/10 h-11 px-8 uppercase tracking-widest font-headline">
