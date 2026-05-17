@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Sidebar, SidebarContent, SidebarProvider, SidebarHeader, SidebarFooter } from '@/components/ui/sidebar';
+import { Sidebar, SidebarContent, SidebarProvider, SidebarHeader, SidebarFooter, SidebarTrigger } from '@/components/ui/sidebar';
 import { Home, History, Box, Settings, Share2, HelpCircle, User, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -19,15 +19,16 @@ export const AppShell: React.FC<AppShellProps> = ({ children, activeSection, onS
     <SidebarProvider>
       <div className="flex h-screen w-full bg-background overflow-hidden selection:bg-primary/30">
         <Sidebar className="glass-darker border-r border-white/5 w-[240px]" collapsible="icon">
-          <SidebarHeader className="p-6">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-primary glow-primary flex items-center justify-center text-white">
+          <SidebarHeader className="p-4 flex flex-row items-center justify-between">
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="w-8 h-8 rounded-lg bg-primary glow-primary flex items-center justify-center text-white shrink-0">
                 <Box className="w-5 h-5" />
               </div>
-              <span className="font-headline font-bold text-lg tracking-tight group-data-[collapsible=icon]:hidden">
+              <span className="font-headline font-bold text-lg tracking-tight group-data-[collapsible=icon]:hidden whitespace-nowrap">
                 Aether<span className="text-primary">Motion</span>
               </span>
             </div>
+            <SidebarTrigger className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-white/5 transition-all" />
           </SidebarHeader>
 
           <SidebarContent className="px-3 space-y-1 py-4">
