@@ -37,6 +37,7 @@ import { generateProceduralFallback } from '@/lib/ai/fallback-generator';
 import { QuotaExhaustedError } from '@/lib/ai/resilience-utils';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { cn } from '@/lib/utils';
 
 export default function Home() {
   const [activeSection, setActiveSection] = useState<SectionID>('stage');
