@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AppShell, type SectionID } from '@/components/layout/AppShell';
 import { MotionStage } from '@/components/canvas/MotionStage';
 import { AITerminal } from '@/components/terminal/AITerminal';
@@ -20,14 +19,13 @@ import {
   Library, 
   BookOpen, 
   Settings2,
-  User as UserIcon,
-  CreditCard,
   ShieldCheck,
   Zap,
   CheckCircle2,
   Code2,
   Github,
-  Edit3
+  Edit3,
+  CreditCard
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -50,6 +48,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { generateStandaloneHtml } from '@/lib/export-utils';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function Home() {
   const [activeSection, setActiveSection] = useState<SectionID>('stage');
@@ -64,7 +64,13 @@ export default function Home() {
 
   const { user } = useUser();
   const db = useFirestore();
-  const userProfileRef = user ? doc(db!, 'users', user.uid) : null;
+  
+  // Memoize the document reference to avoid null access on initial render
+  const userProfileRef = useMemo(() => {
+    if (!user || !db) return null;
+    return doc(db, 'users', user.uid);
+  }, [user, db]);
+
   const { data: profile } = useDoc(userProfileRef);
   
   const { toast } = useToast();
@@ -108,12 +114,24 @@ export default function Home() {
   };
 
   const handleUpgradePlan = () => {
-    if (!user || !userProfileRef) return;
-    updateDoc(userProfileRef, { plan: 'pro' });
-    toast({
-      title: "PLAN UPGRADED",
-      description: "Welcome to AetherMotion Pro. Full GPU acceleration enabled.",
-    });
+    if (!userProfileRef) return;
+    
+    updateDoc(userProfileRef, { plan: 'pro' })
+      .then(() => {
+        toast({
+          title: "PLAN UPGRADED",
+          description: "Welcome to AetherMotion Pro. Full GPU acceleration enabled.",
+        });
+      })
+      .catch(async (err) => {
+        if (err.code === 'permission-denied') {
+          errorEmitter.emitPermissionError(new FirestorePermissionError({
+            path: userProfileRef.path,
+            operation: 'update',
+            requestResourceData: { plan: 'pro' }
+          }));
+        }
+      });
   };
 
   const handleUpdateProfile = async () => {
@@ -121,7 +139,17 @@ export default function Home() {
     setIsUpdatingProfile(true);
     try {
       await updateProfile(user, { displayName: newName });
-      await updateDoc(userProfileRef, { displayName: newName });
+      updateDoc(userProfileRef, { displayName: newName })
+        .catch(async (err) => {
+          if (err.code === 'permission-denied') {
+            errorEmitter.emitPermissionError(new FirestorePermissionError({
+              path: userProfileRef.path,
+              operation: 'update',
+              requestResourceData: { displayName: newName }
+            }));
+          }
+        });
+      
       setIsProfileModalOpen(false);
       toast({
         title: "IDENTITY UPDATED",
