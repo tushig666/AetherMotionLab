@@ -690,6 +690,3 @@ export default function Home() {
     </AppShell>
   );
 }
-
-// Ensure the page handles long-running AI generation flows
-export const maxDuration = 60;

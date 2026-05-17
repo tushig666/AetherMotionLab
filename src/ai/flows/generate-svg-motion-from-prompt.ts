@@ -11,9 +11,6 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-// Increase timeout for long-running AI generations
-export const maxDuration = 60;
-
 // Input Schema
 const GenerateSvgMotionFromPromptInputSchema = z.object({
   prompt: z
